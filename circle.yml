@@ -1,0 +1,24 @@
+machine:
+  services:
+    - docker
+  environment:
+    GOOS: "linux"
+    GOARCH: "amd64"
+
+general:
+  branches:
+    only:
+      - master
+
+dependencies:
+  pre:
+    - docker login -e ${DOCKER_EMAIL} -u ${DOCKER_USER} -p ${DOCKER_PASS}
+
+test:
+  override:
+    - go test -cover -v .
+    - CGO_ENABLED=0 go build -a -ldflags "-X main.gitHash=$(git rev-parse HEAD) -s -extldflags '-static'"
+  post:
+    - docker build --rm=true -t jakekeeys/dyndns53:latest .
+    - docker tag jakekeeys/dyndns53:latest jakekeeys/dyndns53:$CIRCLE_SHA1
+    - docker push jakekeeys/dyndns53
